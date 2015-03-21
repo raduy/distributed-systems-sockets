@@ -52,7 +52,8 @@ public class FileServer {
 
     private static void listenForClient(ServerSocket serverSocket) {
         try (Socket clientSocket = serverSocket.accept();
-             OutputStream outputStream = clientSocket.getOutputStream()) {
+             OutputStream outputStream = clientSocket.getOutputStream();
+             DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
 
             println("Client connected on socket! %s", clientSocket);
 
@@ -63,13 +64,13 @@ public class FileServer {
             println("Sending %s file...", fileName);
 
             println("Sending fileName size which is %d bytes", fileName.length());
-            sendFileNameLength(outputStream, fileName);
+            sendFileNameLength(dataOutputStream, fileName);
 
             println("Sending fileName which is %s", fileName);
             sendFileName(outputStream, fileName);
 
             println("Sending file length in bytes. It is: %d", length);
-            sendFileLength(outputStream, (int) length);
+            sendFileLength(dataOutputStream, (int) length);
 
             println("Sending file content...");
             sendFileContent(outputStream, file);
@@ -83,31 +84,31 @@ public class FileServer {
 
     private static void sendFileContent(OutputStream outputStream, File file) throws IOException {
         int sentBytes = 0;
-        FileInputStream fileInputStream = new FileInputStream(file);
-        byte[] buffer = new byte[CHUNK_SIZE];
-        long length = file.length();
-        int offset = 0;
 
-        while (sentBytes < length) {
-            int read_from_file = fileInputStream.read(buffer);
-            outputStream.write(buffer, offset, read_from_file);
-            sentBytes += read_from_file;
+        try (FileInputStream fileInputStream = new FileInputStream(file)) {
+            byte[] buffer = new byte[CHUNK_SIZE];
+            long length = file.length();
+            int offset = 0;
+
+            while (sentBytes < length) {
+                int read_from_file = fileInputStream.read(buffer);
+                outputStream.write(buffer, offset, read_from_file);
+                sentBytes += read_from_file;
+            }
         }
     }
 
-    private static void sendFileLength(OutputStream outputStream, int length) throws IOException {
-        DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
-        dataOutputStream.writeInt(length);
+    private static void sendFileLength(DataOutputStream out, int length) throws IOException {
+        out.writeInt(length);
     }
 
     private static void sendFileName(OutputStream outputStream, String fileName) throws IOException {
         outputStream.write(fileName.getBytes());
     }
 
-    private static void sendFileNameLength(OutputStream outputStream, String fileName) throws IOException {
+    private static void sendFileNameLength(DataOutputStream out, String fileName) throws IOException {
         int fileNameLength = fileName.getBytes().length;
-        DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
-        dataOutputStream.writeInt(fileNameLength);
+        out.writeInt(fileNameLength);
     }
 
     private static File openFile() {
